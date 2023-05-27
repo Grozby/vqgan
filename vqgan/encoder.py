@@ -64,7 +64,7 @@ class Encoder(tf.keras.Model):
                         strides=2,
                         padding="same",
                     ))
-            self.blocks.append(tf.keras.models.Sequential(*block_layers))
+            self.blocks.append(tf.keras.models.Sequential(block_layers))
 
         self.residual_1 = ResNetBlock(
             input_channels=out_channels,

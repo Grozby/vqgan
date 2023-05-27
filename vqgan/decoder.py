@@ -68,7 +68,7 @@ class Encoder(tf.keras.Model):
             if i != len(channel_multipliers) - 1:
                 current_resolution *= 2
                 block_layers.append(UpSampling(channels=out_channels))
-            self.blocks.append(tf.keras.models.Sequential(*block_layers))
+            self.blocks.append(tf.keras.models.Sequential(block_layers))
 
         self.normalize = tf.keras.layers.GroupNormalization(
             groups=32,
