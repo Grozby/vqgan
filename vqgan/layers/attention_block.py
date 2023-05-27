@@ -55,10 +55,10 @@ class AttentionBlock(tf.keras.layers.Layer):
             v.reshape(b, c, h * w),
         )
 
-        q = q.permute(0, 2, 1)
+        q = tf.transpose(q, perm=(0, 2, 1))
         x = q @ k * (c**-0.5)  # shape = (b, hw, hw)
         x = tf.nn.softmax(x, axis=-1)
-        x = x.permute(0, 2, 1)
+        x = tf.transpose(x, perm=(0, 2, 1))
         x = x @ v  # shape = (b, c, hw)
         x = x.reshape(b, h, w, c)
 
