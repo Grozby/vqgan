@@ -28,18 +28,33 @@ class VectorQuantizer(tf.keras.layers.Layer):
 
     def call(self, z, *args):
         z_flatten = tf.reshape(z, (-1, self.embedding_dimension))
-        d = (tf.math.reduce_sum(z_flatten**2, axis=1, keepdims=True) +
-             tf.math.reduce_sum(self.embedding.weights**2, axis=1) -
-             (2 * z_flatten @ tf.transpose(self.embedding.weights)))
-        min_encoding_indices = tf.argmin(d, axis=1)
-        z_q = self.embedding(min_encoding_indices).reshape(z.shape)
+        distances = (tf.math.reduce_sum(
+            z_flatten**2,
+            axis=1,
+            keepdims=True,
+        ) + tf.math.reduce_sum(
+            self.embedding.weights**2,
+            axis=0,
+            keepdims=True,
+        ) - (2 * z_flatten @ tf.transpose(self.embedding.weights)))
 
-        loss = tf.math.reduce_mean((tf.stop_gradient(z_q) - z)**2)
-        loss += self.beta * tf.math.reduce_mean((z_q - tf.stop_gradient(z))**2)
+        encoding_indices = tf.argmin(distances, axis=1)
+        quantized = self.embedding(encoding_indices).reshape(z.shape)
 
-        z_q = z + tf.stop_gradient(z_q - z)
+        vq_loss = tf.math.reduce_mean((quantized - tf.stop_gradient(z))**2)
+        commitment_loss = (self.beta * tf.math.reduce_mean(
+            (tf.stop_gradient(quantized) - z)**2))
 
-        return z_q, min_encoding_indices, loss
+        quantized = z + tf.stop_gradient(quantized - z)
+
+        encodings = tf.one_hot(encoding_indices,
+                               self.num_embeddings,
+                               dtype=distances.dtype)
+        avg_probs = tf.reduce_mean(encodings, 0)
+        perplexity = tf.exp(-tf.reduce_sum(avg_probs *
+                                           tf.math.log(avg_probs + 1e-10)))
+
+        return quantized, encoding_indices, vq_loss, commitment_loss, perplexity
 
     def get_config(self) -> Dict:
         config = super().get_config()
