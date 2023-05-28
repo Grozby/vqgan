@@ -7,7 +7,7 @@ from vqgan.layers.resnet_block import ResNetBlock
 from vqgan.layers.upsampling import UpSampling
 
 
-class Encoder(tf.keras.Model):
+class Decoder(tf.keras.Model):
 
     def __init__(
         self,
