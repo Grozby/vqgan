@@ -4,6 +4,12 @@ import tensorflow as tf
 
 
 class Discriminator(tf.keras.Model):
+    """
+    Discriminator from PatchGAN.
+
+    References:
+        https://arxiv.org/pdf/1611.07004.pdf
+    """
 
     def __init__(
         self,
@@ -25,6 +31,10 @@ class Discriminator(tf.keras.Model):
                     kernel_size=4,
                     strides=2,
                     padding="same",
+                    kernel_initializer=tf.keras.initializers.RandomNormal(
+                        mean=0.0,
+                        stddev=0.02,
+                    ),
                 ),
                 tf.keras.layers.LeakyReLU(alpha=0.2),
             ])
@@ -40,8 +50,18 @@ class Discriminator(tf.keras.Model):
                         strides=2 if i < n_layers - 1 else 1,
                         padding="same",
                         use_bias=False,
+                        kernel_initializer=tf.keras.initializers.RandomNormal(
+                            mean=0.0,
+                            stddev=0.02,
+                        ),
                     ),
-                    tf.keras.layers.BatchNormalization(),
+                    tf.keras.layers.BatchNormalization(
+                        gamma_initializer=tf.keras.initializers.RandomNormal(
+                            mean=1.0,
+                            stddev=0.02,
+                        ),
+                        beta_initializer=tf.keras.initializers.Constant(0),
+                    ),
                     tf.keras.layers.LeakyReLU(alpha=0.2),
                 ]))
 
