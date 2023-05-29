@@ -69,4 +69,4 @@ class VQGAN(tf.keras.models.Model):
             self.vector_quantize(x))
         x = self.post_quantize_convolution(cookbook_entry)
         x = self.decoder(x)
-        return x, cookbook_indexes, vq_loss
+        return x, cookbook_indexes, vq_loss + commitment_loss
