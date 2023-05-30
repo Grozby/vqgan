@@ -22,8 +22,10 @@ class LPIPS(tf.keras.models.Model):
         ]
 
         self.trainable = False
+        self.weights_path = weights_path
 
     def build(self, input_shape):
+        super().build(input_shape)
         self.load_weights(self.weights_path)
 
     def call(self, x, **kwargs):
