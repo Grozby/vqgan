@@ -39,7 +39,7 @@ class Discriminator(tf.keras.Model):
         ]
         channels_multipliers = [min(2**i, 8) for i in range(n_layers)]
 
-        for i, c_mul in channels_multipliers:
+        for i, c_mul in enumerate(channels_multipliers):
             self.blocks.append(
                 tf.keras.models.Sequential([
                     tf.keras.layers.Conv2D(
