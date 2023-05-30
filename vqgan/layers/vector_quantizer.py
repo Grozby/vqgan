@@ -17,39 +17,45 @@ class VectorQuantizer(tf.keras.layers.Layer):
         self.embedding_dimension = embedding_dimension
         self.beta = beta
 
-        self.embedding = tf.keras.layers.Embedding(
-            input_dim=number_embeddings,
-            output_dim=embedding_dimension,
-            embeddings_initializer=tf.keras.initializers.RandomUniform(
+        self.embeddings = tf.Variable(
+            tf.keras.initializers.RandomUniform(
                 minval=-1 / number_embeddings,
                 maxval=1 / number_embeddings,
-            ),
-        )
+            )(
+                shape=(embedding_dimension, number_embeddings),
+                dtype=tf.float32,
+            ))
+
+    def quantize(self, encoding_indices):
+        w = tf.transpose(self.embeddings, [1, 0])
+        return tf.nn.embedding_lookup(w, encoding_indices)
 
     def call(self, z, *args):
         z_flatten = tf.reshape(z, (-1, self.embedding_dimension))
-        distances = (tf.math.reduce_sum(
+        distances = (tf.reduce_sum(
             z_flatten**2,
             axis=1,
             keepdims=True,
-        ) + tf.math.reduce_sum(
-            self.embedding.weights**2,
+        ) + tf.reduce_sum(
+            self.embeddings**2,
             axis=0,
-            keepdims=True,
-        ) - (2 * z_flatten @ tf.transpose(self.embedding.weights)))
+        ) - (2 * z_flatten @ self.embeddings))
 
         encoding_indices = tf.argmin(distances, axis=1)
-        quantized = self.embedding(encoding_indices).reshape(z.shape)
+        quantized = tf.reshape(self.quantize(encoding_indices),
+                               shape=tf.shape(z))
 
-        vq_loss = tf.math.reduce_mean((quantized - tf.stop_gradient(z))**2)
-        commitment_loss = (self.beta * tf.math.reduce_mean(
+        vq_loss = tf.reduce_mean((quantized - tf.stop_gradient(z))**2)
+        commitment_loss = (self.beta * tf.reduce_mean(
             (tf.stop_gradient(quantized) - z)**2))
 
         quantized = z + tf.stop_gradient(quantized - z)
 
-        encodings = tf.one_hot(encoding_indices,
-                               self.num_embeddings,
-                               dtype=distances.dtype)
+        encodings = tf.one_hot(
+            encoding_indices,
+            self.number_embeddings,
+            dtype=distances.dtype,
+        )
         avg_probs = tf.reduce_mean(encodings, 0)
         perplexity = tf.exp(-tf.reduce_sum(avg_probs *
                                            tf.math.log(avg_probs + 1e-10)))
