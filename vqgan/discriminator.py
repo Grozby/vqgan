@@ -22,8 +22,6 @@ class Discriminator(tf.keras.Model):
         self.start_channels = start_channels
         self.n_layers = n_layers
 
-        self.input_convolution()
-
         self.blocks = [
             tf.keras.models.Sequential([
                 tf.keras.layers.Conv2D(
