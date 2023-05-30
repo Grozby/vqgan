@@ -90,14 +90,14 @@ class VectorQuantizerEMA(tf.keras.layers.Layer):
         self.decay = decay
         self.epsilon = epsilon
 
-        self.embedding = tf.keras.layers.Embedding(
-            input_dim=number_embeddings,
-            output_dim=embedding_dimension,
-            embeddings_initializer=tf.keras.initializers.RandomUniform(
+        self.embeddings = tf.Variable(
+            tf.keras.initializers.RandomUniform(
                 minval=-1 / number_embeddings,
                 maxval=1 / number_embeddings,
-            ),
-        )
+            )(
+                shape=(embedding_dimension, number_embeddings),
+                dtype=tf.float32,
+            ))
 
         self.ema_cluster_size = tf.train.ExponentialMovingAverage(
             decay=self.decay,
@@ -113,31 +113,34 @@ class VectorQuantizerEMA(tf.keras.layers.Layer):
             decay=self.decay,
             name='ema_dw',
         )
-        self.ema_dw.initialize(self.embeddings.weights)
+        self.ema_dw.initialize(self.embeddings)
+
+    def quantize(self, encoding_indices):
+        w = tf.transpose(self.embeddings, [1, 0])
+        return tf.nn.embedding_lookup(w, encoding_indices)
 
     def call(self, z, training=None, *args):
         z_flatten = tf.reshape(z, (-1, self.embedding_dimension))
-        distances = (tf.math.reduce_sum(
+        distances = (tf.reduce_sum(
             z_flatten**2,
             axis=1,
             keepdims=True,
-        ) + tf.math.reduce_sum(
-            self.embedding.weights**2,
+        ) + tf.reduce_sum(
+            self.embeddings**2,
             axis=0,
-            keepdims=True,
-        ) - (2 * z_flatten @ tf.transpose(self.embedding.weights)))
+        ) - (2 * z_flatten @ self.embeddings))
 
         encoding_indices = tf.argmin(distances, axis=1)
-        quantized = self.embedding(encoding_indices).reshape(z.shape)
+        quantized = tf.reshape(self.quantize(encoding_indices), tf.shape(z))
         encodings = tf.one_hot(
             encoding_indices,
-            self.num_embeddings,
+            self.number_embeddings,
             dtype=distances.dtype,
         )
 
         if training:
             sum_encodings = tf.reduce_sum(encodings, axis=0)
-            dw = tf.matmul(z_flatten, encodings, transpose_a=True)
+            dw = tf.transpose(z_flatten) @ encodings
 
             self.ema_cluster_size.apply(sum_encodings)
             updated_ema_cluster_size = self.ema_cluster_size.average(
@@ -148,15 +151,15 @@ class VectorQuantizerEMA(tf.keras.layers.Layer):
             n = tf.reduce_sum(updated_ema_cluster_size)
             updated_ema_cluster_size = (
                 (updated_ema_cluster_size + self.epsilon) /
-                (n + self.num_embeddings * self.epsilon) * n)
+                (n + self.number_embeddings * self.epsilon) * n)
 
             normalised_updated_ema_w = (updated_ema_dw / tf.reshape(
                 updated_ema_cluster_size,
                 (1, -1),
             ))
-            self.embeddings.weights.assign(normalised_updated_ema_w)
+            self.embeddings.assign(normalised_updated_ema_w)
 
-        commitment_loss = (self.beta * tf.math.reduce_mean(
+        commitment_loss = (self.beta * tf.reduce_mean(
             (tf.stop_gradient(quantized) - z)**2))
 
         quantized = z + tf.stop_gradient(quantized - z)
