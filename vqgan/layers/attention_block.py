@@ -44,15 +44,15 @@ class AttentionBlock(tf.keras.layers.Layer):
         )
 
     def call(self, x, *args):
-        b, h, w, c = x.shape
         previous = x
 
         x = self.normalize(x)
         q, k, v = self.q(x), self.k(x), self.v(x)
+        b, h, w, c = q.shape
         q, k, v = (
-            q.reshape(b, c, h * w),
-            k.reshape(b, c, h * w),
-            v.reshape(b, c, h * w),
+            tf.reshape(q, shape=(-1, c, h * w)),
+            tf.reshape(k, shape=(-1, c, h * w)),
+            tf.reshape(v, shape=(-1, c, h * w)),
         )
 
         q = tf.transpose(q, perm=(0, 2, 1))
@@ -60,7 +60,7 @@ class AttentionBlock(tf.keras.layers.Layer):
         x = tf.nn.softmax(x, axis=-1)
         x = tf.transpose(x, perm=(0, 2, 1))
         x = x @ v  # shape = (b, c, hw)
-        x = x.reshape(b, h, w, c)
+        x = tf.reshape(x, shape=(-1, h, w, c))
 
         return self.linear(x) + previous
 
