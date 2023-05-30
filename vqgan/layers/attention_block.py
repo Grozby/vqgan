@@ -21,26 +21,26 @@ class AttentionBlock(tf.keras.layers.Layer):
             filters=channels,
             kernel_size=1,
             strides=1,
-            padding=0,
+            padding="valid",
         )
         self.k = tf.keras.layers.Conv2D(
             filters=channels,
             kernel_size=1,
             strides=1,
-            padding=0,
+            padding="valid",
         )
         self.v = tf.keras.layers.Conv2D(
             filters=channels,
             kernel_size=1,
             strides=1,
-            padding=0,
+            padding="valid",
         )
 
         self.linear = tf.keras.layers.Conv2D(
             filters=channels,
             kernel_size=1,
             strides=1,
-            padding=0,
+            padding="valid",
         )
 
     def call(self, x, *args):

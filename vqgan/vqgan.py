@@ -40,7 +40,7 @@ class VQGAN(tf.keras.models.Model):
             filters=embedding_dimension,
             kernel_size=1,
             strides=1,
-            padding=0,
+            padding="valid",
         )
         self.vector_quantize = VectorQuantizer(
             number_embeddings=number_embeddings,
@@ -51,7 +51,7 @@ class VQGAN(tf.keras.models.Model):
             filters=embedding_dimension,
             kernel_size=1,
             strides=1,
-            padding=0,
+            padding="valid",
         )
         self.decoder = Decoder(
             input_resolution=input_resolution,
