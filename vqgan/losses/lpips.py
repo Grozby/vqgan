@@ -97,7 +97,7 @@ class VGG16(tf.keras.Model):
         ).layers
 
         self.slice1 = tf.keras.models.Sequential(
-            self._add_zero_padding(vgg_pretrained_features[0:3]),
+            self._add_zero_padding(vgg_pretrained_features[1:3]),
             name="features1",
         )
         self.slice2 = tf.keras.models.Sequential(
