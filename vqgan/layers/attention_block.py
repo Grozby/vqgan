@@ -59,7 +59,7 @@ class AttentionBlock(tf.keras.layers.Layer):
         x = q @ k * (c**-0.5)  # shape = (b, hw, hw)
         x = tf.nn.softmax(x, axis=-1)
         x = tf.transpose(x, perm=(0, 2, 1))
-        x = x @ v  # shape = (b, c, hw)
+        x = v @ x  # shape = (b, c, hw)
         x = tf.reshape(x, shape=(-1, h, w, c))
 
         return self.linear(x) + previous
