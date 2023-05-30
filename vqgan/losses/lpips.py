@@ -22,18 +22,19 @@ class LPIPS(tf.keras.models.Model):
         ]
 
         self.trainable = False
-        self.load_weights(weights_path)
+
+    def build(self, input_shape):
+        self.load_weights(self.weights_path)
 
     def call(self, x, **kwargs):
         real_x, fake_x = x
         features_real = self.vgg(self.scaling_layer(real_x))
         features_fake = self.vgg(self.scaling_layer(fake_x))
-        diffs = [(norm_tensor(fr) - norm_tensor(ff)) ** 2
+        diffs = [(norm_tensor(fr) - norm_tensor(ff))**2
                  for fr, ff in zip(features_real, features_fake)]
 
         return tf.reduce_sum([
-            spatial_average(ll(d))
-            for ll, d in zip(self.linear_layers, diffs)
+            spatial_average(ll(d)) for ll, d in zip(self.linear_layers, diffs)
         ])
 
 
