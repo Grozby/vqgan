@@ -24,11 +24,12 @@ class Discriminator(tf.keras.Model):
 
         self.blocks = [
             tf.keras.models.Sequential([
+                tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
                 tf.keras.layers.Conv2D(
                     filters=start_channels,
                     kernel_size=4,
                     strides=2,
-                    padding="same",
+                    padding="valid",
                     kernel_initializer=tf.keras.initializers.RandomNormal(
                         mean=0.0,
                         stddev=0.02,
@@ -42,11 +43,12 @@ class Discriminator(tf.keras.Model):
         for i, c_mul in enumerate(channels_multipliers):
             self.blocks.append(
                 tf.keras.models.Sequential([
+                    tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
                     tf.keras.layers.Conv2D(
                         filters=start_channels * c_mul,
                         kernel_size=4,
                         strides=2 if i < n_layers - 1 else 1,
-                        padding="same",
+                        padding="valid",
                         use_bias=False,
                         kernel_initializer=tf.keras.initializers.RandomNormal(
                             mean=0.0,
@@ -63,17 +65,21 @@ class Discriminator(tf.keras.Model):
                     tf.keras.layers.LeakyReLU(alpha=0.2),
                 ]))
 
-        self.output_convolution = tf.keras.layers.Conv2D(
-            filters=1,
-            kernel_size=4,
-            strides=1,
-            padding="same",
-        )
+        self.blocks.append(
+            tf.keras.models.Sequential([
+                tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
+                tf.keras.layers.Conv2D(
+                    filters=1,
+                    kernel_size=4,
+                    strides=1,
+                    padding="valid",
+                ),
+            ]))
 
     def call(self, x, training=None, mask=None):
         for block in self.blocks:
             x = block(x)
-        return self.output_convolution(x)
+        return x
 
     def get_config(self) -> Dict:
         config = super().get_config()
