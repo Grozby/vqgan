@@ -26,7 +26,8 @@ class LPIPS(tf.keras.models.Model):
 
     def build(self, input_shape):
         super().build(input_shape)
-        self.load_weights(self.weights_path)
+        if self.weights_path is not None:
+            self.load_weights(self.weights_path)
 
     def call(self, x, **kwargs):
         real_x, fake_x = x
