@@ -68,21 +68,24 @@ class TrainVQGAN(tf.keras.Model):
         optimizer_discriminator,
         **kwargs,
     ):
-        super().compile()
+        super().compile(*args, **kwargs)
         self.optimizer_vqgan = optimizer_vqgan
         self.optimizer_discriminator = optimizer_discriminator
 
     @property
     def discriminator_loss_factor(self) -> float:
-        return tf.where(self._step.value() > self.discriminator_step_start,
-                        self._discriminator_loss_factor, 0.)
+        return tf.where(
+            self._step.value() > self.discriminator_step_start,
+            self._discriminator_loss_factor,
+            0.,
+        )
 
     def _calculate_lambda(self, perceptual_loss, gan_loss):
         last_layer_weights = self.vqgan.decoder.output_convolution.weights
         perceptual_loss_grads = tf.gradients(
             perceptual_loss,
             last_layer_weights,
-        )[0]
+        )[0]  # Get the gradients only for the convolution weights, not the biases
         gan_loss_grads = tf.gradients(
             gan_loss,
             last_layer_weights,
@@ -158,10 +161,6 @@ class TrainVQGAN(tf.keras.Model):
         self.loss_vqgan_tracker.update_state(vq_loss)
         self.loss_discriminator_tracker.update_state(discriminator_loss)
 
-        loss_vqgan_result = self.loss_vqgan_tracker.result()
-        loss_discriminator_result = self.loss_discriminator_tracker.result()
         return {
-            "loss": loss_vqgan_result + loss_discriminator_result,
-            "loss_vqgan": loss_vqgan_result,
-            "loss_discriminator": loss_discriminator_result,
+            m.name: m.result() for m in self.metrics
         }
