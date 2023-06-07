@@ -33,15 +33,33 @@ class TrainVQGAN(tf.keras.Model):
         self.discriminator = Discriminator(**discriminator_kwargs)
         self.perceptual_loss = LPIPS(lpips_weights_path)
 
-        self.loss_vqgan_tracker, self.loss_discriminator_tracker = (
-            tf.keras.metrics.Mean(name="loss_vqgan"),
-            tf.keras.metrics.Mean(name="loss_discriminator"),
-        )
+        # Losses for VQVAE
+        self.loss_reconstruction_tracker = tf.keras.metrics.Mean(
+            name="loss_reconstruction")
+        self.loss_perceptual_tracker = tf.keras.metrics.Mean(name="loss_lpips")
+        self.loss_codebook_tracker = tf.keras.metrics.Mean(name="loss_vq")
+        self.loss_generator_tracker = tf.keras.metrics.Mean(
+            name="loss_generator")
+        self.loss_vqgan_tracker = tf.keras.metrics.Mean(name="loss_vqgan")
+        # Loss for Discriminator
+        self.loss_discriminator_tracker = tf.keras.metrics.Mean(
+            name="loss_discriminator")
 
         self._step = tf.Variable(0, dtype=tf.int64)
 
         self.optimizer_vqgan = None
         self.optimizer_discriminator = None
+
+    @property
+    def metrics(self):
+        return [
+            self.loss_reconstruction_tracker,
+            self.loss_perceptual_tracker,
+            self.loss_codebook_tracker,
+            self.loss_generator_tracker,
+            self.loss_vqgan_tracker,
+            self.loss_discriminator_tracker,
+        ]
 
     def compile(
         self,
@@ -92,17 +110,16 @@ class TrainVQGAN(tf.keras.Model):
             perceptual_loss = self.perceptual_loss([
                 images,
                 decoded_images,
-            ])
-            reconstruction_loss = tf.abs(images - decoded_images)
+            ]) * self.perceptual_loss_factor
+            reconstruction_loss = (tf.abs(images - decoded_images) *
+                                   self.reconstruction_loss_factor)
 
-            pr_loss = tf.reduce_mean(
-                self.perceptual_loss_factor * perceptual_loss +
-                self.reconstruction_loss_factor * reconstruction_loss)
-            g_loss = -tf.reduce_mean(discriminator_fake)
+            pr_loss = tf.reduce_mean(perceptual_loss + reconstruction_loss)
+            generator_loss = -tf.reduce_mean(discriminator_fake)
 
-            lambda_value = self._calculate_lambda(pr_loss, g_loss)
-            vq_loss = (pr_loss + q_loss +
-                       self.discriminator_loss_factor * lambda_value * g_loss)
+            lambda_value = self._calculate_lambda(pr_loss, generator_loss)
+            generator_loss *= self.discriminator_loss_factor * lambda_value
+            vq_loss = pr_loss + q_loss + generator_loss
 
         vqgan_gradients = tape.gradient(
             vq_loss,
@@ -134,6 +151,10 @@ class TrainVQGAN(tf.keras.Model):
                 self.discriminator.trainable_variables,
             ))
 
+        self.loss_reconstruction_tracker.update_state(reconstruction_loss)
+        self.loss_perceptual_tracker.update(perceptual_loss)
+        self.loss_codebook_tracker.update(q_loss)
+        self.loss_generator_tracker.update(generator_loss)
         self.loss_vqgan_tracker.update_state(vq_loss)
         self.loss_discriminator_tracker.update_state(discriminator_loss)
 
