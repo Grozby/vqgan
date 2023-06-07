@@ -7,7 +7,7 @@ from vqgan.encoder import Encoder
 from vqgan.layers.vector_quantizer import VectorQuantizer
 
 
-class VQGAN(tf.keras.models.Model):
+class VQVAE(tf.keras.models.Model):
 
     def __init__(
         self,
@@ -62,11 +62,11 @@ class VQGAN(tf.keras.models.Model):
             n_blocks=n_blocks,
         )
 
-    def call(self, x, training=None, mask=None):
-        x = self.encoder(x)
-        x = self.quantize_convolution(x)
+    def call(self, x, training=None, **kwargs):
+        x = self.encoder(x, training=training)
+        x = self.quantize_convolution(x, training=training)
         cookbook_entry, cookbook_indexes, vq_loss, commitment_loss, _ = (
-            self.vector_quantize(x))
-        x = self.post_quantize_convolution(cookbook_entry)
-        x = self.decoder(x)
+            self.vector_quantize(x, training=training))
+        x = self.post_quantize_convolution(cookbook_entry, training=training)
+        x = self.decoder(x, training=training)
         return x, cookbook_indexes, vq_loss + commitment_loss

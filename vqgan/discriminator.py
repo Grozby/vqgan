@@ -76,9 +76,9 @@ class Discriminator(tf.keras.Model):
                 ),
             ]))
 
-    def call(self, x, training=None, mask=None):
+    def call(self, x, training=None, **kwargs):
         for block in self.blocks:
-            x = block(x)
+            x = block(x, training=training)
         return x
 
     def get_config(self) -> Dict:

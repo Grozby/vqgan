@@ -4,15 +4,15 @@ import tensorflow as tf
 
 from vqgan.discriminator import Discriminator
 from vqgan.losses.lpips import LPIPS
-from vqgan.vqgan import VQGAN
+from vqgan.vqvae import VQVAE
 
 
-class TrainVQGAN(tf.keras.Model):
+class VQGAN(tf.keras.Model):
 
     def __init__(
         self,
         *args,
-        vqgan_kwargs: Dict,
+        vqvae_kwargs: Dict,
         discriminator_kwargs: Dict,
         lpips_weights_path: str,
         discriminator_step_start: int,
@@ -22,14 +22,14 @@ class TrainVQGAN(tf.keras.Model):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.vqgan_kwargs = vqgan_kwargs
+        self.vqvae_kwargs = vqvae_kwargs
         self.discriminator_kwargs = discriminator_kwargs
         self.discriminator_step_start = discriminator_step_start
         self.perceptual_loss_factor = perceptual_loss_factor
         self.reconstruction_loss_factor = reconstruction_loss_factor
         self._discriminator_loss_factor = discriminator_loss_factor
 
-        self.vqgan = VQGAN(**vqgan_kwargs)
+        self.vqgan = VQVAE(**vqvae_kwargs)
         self.discriminator = Discriminator(**discriminator_kwargs)
         self.perceptual_loss = LPIPS(lpips_weights_path)
 

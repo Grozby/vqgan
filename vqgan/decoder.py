@@ -81,13 +81,13 @@ class Decoder(tf.keras.Model):
             padding="same",
         )
 
-    def call(self, x, training=None, mask=None):
+    def call(self, x, training=None, **kwargs):
         x = self.input_conv(x)
-        x = self.residual_1(x)
-        x = self.attention(x)
-        x = self.residual_2(x)
+        x = self.residual_1(x, training=None)
+        x = self.attention(x, training=None)
+        x = self.residual_2(x, training=None)
         for block in self.blocks:
-            x = block(x)
+            x = block(x, training=None)
         x = self.normalize(x)
         x = tf.keras.activations.swish(x)
         return self.output_convolution(x)
