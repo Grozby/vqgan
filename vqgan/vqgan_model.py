@@ -161,6 +161,37 @@ class VQGAN(tf.keras.Model):
         self.loss_vqgan_tracker.update_state(vq_loss)
         self.loss_discriminator_tracker.update_state(discriminator_loss)
 
-        return {
-            m.name: m.result() for m in self.metrics
-        }
+        return {m.name: m.result() for m in self.metrics}
+
+    def test_step(self, images):
+        decoded_images, _, q_loss = self.vqgan(images)
+        discriminator_real = self.discriminator(images)
+        discriminator_fake = self.discriminator(decoded_images)
+
+        perceptual_loss = self.perceptual_loss([
+            images,
+            decoded_images,
+        ]) * self.perceptual_loss_factor
+        reconstruction_loss = (tf.abs(images - decoded_images) *
+                               self.reconstruction_loss_factor)
+
+        pr_loss = tf.reduce_mean(perceptual_loss + reconstruction_loss)
+        generator_loss = -tf.reduce_mean(discriminator_fake)
+
+        lambda_value = self._calculate_lambda(pr_loss, generator_loss)
+        generator_loss *= self.discriminator_loss_factor * lambda_value
+        vq_loss = pr_loss + q_loss + generator_loss
+
+        d_loss_real = tf.reduce_mean(tf.nn.relu(1. - discriminator_real))
+        d_loss_fake = tf.reduce_mean(tf.nn.relu(1. + discriminator_fake))
+        discriminator_loss = (self.discriminator_loss_factor * 0.5 *
+                              (d_loss_real + d_loss_fake))
+
+        self.loss_reconstruction_tracker.update_state(reconstruction_loss)
+        self.loss_perceptual_tracker.update(perceptual_loss)
+        self.loss_codebook_tracker.update(q_loss)
+        self.loss_generator_tracker.update(generator_loss)
+        self.loss_vqgan_tracker.update_state(vq_loss)
+        self.loss_discriminator_tracker.update_state(discriminator_loss)
+
+        return {m.name: m.result() for m in self.metrics}
